@@ -529,9 +529,6 @@ local function StartAimbot()
     OldCameraType = Camera.CameraType
     OldMouseBehavior = UserInputService.MouseBehavior
 
-    Camera.CameraType = Enum.CameraType.Scriptable
-    UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-
     AimConnection = RunService.RenderStepped:Connect(function()
         if not Enabled then
             HideDot()
@@ -556,15 +553,13 @@ local function StartAimbot()
 
         local myRoot = myChar:FindFirstChild("HumanoidRootPart")
         local head = targetChar:FindFirstChild("Head")
-
-        if myRoot and head then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
-
-            myRoot.CFrame = CFrame.new(
-                myRoot.Position,
-                Vector3.new(head.Position.X, myRoot.Position.Y, head.Position.Z)
-            )
-        end
+         if myRoot and head then
+    -- hanya mengunci arah karakter, BUKAN kamera
+    myRoot.CFrame = CFrame.new(
+        myRoot.Position,
+        Vector3.new(head.Position.X, myRoot.Position.Y, head.Position.Z)
+    )
+         end
     end)
 end
 
