@@ -408,12 +408,14 @@ MainTab:CreateButton({
 
 -- ================== AIMBOT TAB ==================
 
+-- anti dobel gui
 if game.CoreGui:FindFirstChild("AimbotStatusGui") then
     game.CoreGui.AimbotStatusGui:Destroy()
 end
 
 local AimbotTab = Window:CreateTab("🎯 Aimbot", 4483362458)
 
+-- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -428,8 +430,8 @@ ScreenGui.Parent = game.CoreGui
 
 local StatusButton = Instance.new("TextButton")
 StatusButton.Parent = ScreenGui
-StatusButton.Size = UDim2.new(0, 190, 0, 45)
-StatusButton.Position = UDim2.new(0, 20, 0.5, -25)
+StatusButton.Size = UDim2.new(0,190,0,45)
+StatusButton.Position = UDim2.new(0,20,0.5,-25)
 StatusButton.BackgroundColor3 = Color3.fromRGB(25,25,25)
 StatusButton.BackgroundTransparency = 0.15
 StatusButton.BorderSizePixel = 0
@@ -438,11 +440,16 @@ StatusButton.Font = Enum.Font.GothamBold
 StatusButton.AutoButtonColor = false
 
 local UICorner = Instance.new("UICorner", StatusButton)
-UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.CornerRadius = UDim.new(0,12)
 
--- ================== STATUS FUNCTION ==================
+-- ================== SETTINGS ==================
 local Enabled = false
+local MaxDistance = 100
+local AutoSwitch = true
+local LockedTarget = nil
+local AimConnection
 
+-- ================== STATUS UPDATE ==================
 local function UpdateStatus(state)
     if state then
         StatusButton.Text = "🎯 AIMBOT : ON"
@@ -452,8 +459,131 @@ local function UpdateStatus(state)
         StatusButton.TextColor3 = Color3.fromRGB(255,80,80)
     end
 end
-
 UpdateStatus(false)
+
+-- ================== TARGET FUNCTIONS ==================
+local function GetClosestTarget()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+
+    local root = char.HumanoidRootPart
+    local closest, dist = nil, MaxDistance
+
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer
+        and plr.Character
+        and plr.Character:FindFirstChild("HumanoidRootPart")
+        and plr.Character:FindFirstChild("Humanoid")
+        and plr.Character.Humanoid.Health > 0 then
+
+            local d = (root.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+            if d < dist then
+                dist = d
+                closest = plr
+            end
+        end
+    end
+    return closest
+end
+
+local function ValidTarget(plr)
+    if not plr or not plr.Character then return false end
+    local hum = plr.Character:FindFirstChild("Humanoid")
+    local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+    local my = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+    return hum and hrp and my
+    and hum.Health > 0
+    and (my.Position - hrp.Position).Magnitude <= MaxDistance
+end
+
+-- ================== AIM LOGIC ==================
+local function StartAimbot()
+    if AimConnection then return end
+
+    LockedTarget = GetClosestTarget()
+
+    AimConnection = RunService.RenderStepped:Connect(function()
+        if not Enabled then return end
+
+        if not ValidTarget(LockedTarget) then
+            if AutoSwitch then
+                LockedTarget = GetClosestTarget()
+            else
+                return
+            end
+        end
+
+        if not LockedTarget then return end
+
+        local myChar = LocalPlayer.Character
+        local targetChar = LockedTarget.Character
+        if not myChar or not targetChar then return end
+
+        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+        local head = targetChar:FindFirstChild("Head")
+
+        if myRoot and head then
+            -- Camera aim
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
+
+            -- Character aim (tidak miring)
+            myRoot.CFrame = CFrame.new(
+                myRoot.Position,
+                Vector3.new(head.Position.X, myRoot.Position.Y, head.Position.Z)
+            )
+        end
+    end)
+end
+
+local function StopAimbot()
+    if AimConnection then
+        AimConnection:Disconnect()
+        AimConnection = nil
+    end
+    LockedTarget = nil
+end
+
+-- ================== CLICK STATUS GUI ==================
+StatusButton.MouseButton1Click:Connect(function()
+    Enabled = not Enabled
+    UpdateStatus(Enabled)
+    if Enabled then
+        StartAimbot()
+    else
+        StopAimbot()
+    end
+end)
+
+-- ================== RAYFIELD TOGGLES ==================
+AimbotTab:CreateToggle({
+    Name = "Aimbot (Camera + Character)",
+    CurrentValue = false,
+    Callback = function(v)
+        Enabled = v
+        UpdateStatus(v)
+        if v then
+            StartAimbot()
+        else
+            StopAimbot()
+        end
+    end
+})
+
+AimbotTab:CreateToggle({
+    Name = "Auto Switch Target",
+    CurrentValue = true,
+    Callback = function(v)
+        AutoSwitch = v
+    end
+})
+
+AimbotTab:CreateButton({
+    Name = "Switch Target (Manual)",
+    Callback = function()
+        LockedTarget = GetClosestTarget()
+    end
+})
 
 -- ================== DRAG ==================
 local dragging, dragStart, startPos
@@ -487,83 +617,12 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- ================== AIMBOT LOGIC (ringkas) ==================
-local conn
-local function Start()
-    if conn then return end
-    conn = RunService.RenderStepped:Connect(function()
-         local MaxDistance = 100
-local AutoSwitch = true
-local LockedTarget = nil
-local AimConnection
-
-local function StartAimbot()
-    if AimConnection then return end
-
-    LockedTarget = GetClosestTarget(MaxDistance)
-
-    AimConnection = RunService.RenderStepped:Connect(function()
-        if not Enabled then return end
-
-        -- ganti target kalau mati / jauh
-        if not IsValidTarget(LockedTarget, MaxDistance) then
-            if AutoSwitch then
-                LockedTarget = GetClosestTarget(MaxDistance)
-            else
-                return
-            end
-        end
-
-        if not LockedTarget then return end
-
-        local myChar = LocalPlayer.Character
-        local targetChar = LockedTarget.Character
-        if not myChar or not targetChar then return end
-
-        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
-        local targetHead = targetChar:FindFirstChild("Head")
-
-        if myRoot and targetHead then
-            -- 🎥 CAMERA AIM
-            Camera.CFrame = CFrame.new(
-                Camera.CFrame.Position,
-                targetHead.Position
-            )
-
-            -- 🧍 CHARACTER AIM (tidak miring)
-            myRoot.CFrame = CFrame.new(
-                myRoot.Position,
-                Vector3.new(
-                    targetHead.Position.X,
-                    myRoot.Position.Y,
-                    targetHead.Position.Z
-                )
-            )
-        end
-    end)
-         end
-    end)
-end
-
-local function Stop()
-    if conn then conn:Disconnect() conn = nil end
-end
-
-StatusButton.MouseButton1Click:Connect(function()
-    Enabled = not Enabled
-    UpdateStatus(Enabled)
-    if Enabled then Start() else Stop() end
+-- reset aman
+LocalPlayer.CharacterAdded:Connect(function()
+    StopAimbot()
+    Enabled = false
+    UpdateStatus(false)
 end)
-
-AimbotTab:CreateToggle({
-    Name = "Aimbot",
-    CurrentValue = false,
-    Callback = function(v)
-        Enabled = v
-        UpdateStatus(v)
-        if v then Start() else Stop() end
-    end
-})
 
 AimbotTab:CreateButton({
    Name = "Hitbox expender",
