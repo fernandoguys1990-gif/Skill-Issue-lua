@@ -557,3 +557,11 @@ AimbotTab:CreateButton({
    end
 })
 
+local DodTap = Window:CreateTab("Die Of death Script", nil)
+
+local Button = DodTap:CreateButton({
+   Name = "Die of death (clik Hare)",
+   Callback = function()
+     loadstring(game:HttpGet("https://raw.githubusercontent.com/fernandoguys1990-gif/Skill-Issue-lua/refs/heads/main/dod.lua"))()
+   end,
+})
