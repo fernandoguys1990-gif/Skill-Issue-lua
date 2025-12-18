@@ -450,6 +450,42 @@ local function UpdateStatus(state)
     end
 end
 
+-- ================== DRAGGABLE STATUS GUI ==================
+local UserInputService = game:GetService("UserInputService")
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AimbotStatusGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local StatusButton = Instance.new("TextButton")
+StatusButton.Parent = ScreenGui
+StatusButton.Size = UDim2.new(0, 190, 0, 45)
+StatusButton.Position = UDim2.new(0, 20, 0.5, -25)
+StatusButton.BackgroundColor3 = Color3.fromRGB(25,25,25)
+StatusButton.BackgroundTransparency = 0.15
+StatusButton.BorderSizePixel = 0
+StatusButton.TextScaled = true
+StatusButton.Font = Enum.Font.GothamBold
+StatusButton.Text = "🎯 AIMBOT : OFF"
+StatusButton.TextColor3 = Color3.fromRGB(255,80,80)
+StatusButton.AutoButtonColor = false
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = StatusButton
+
+-- ===== UPDATE TEXT =====
+local function UpdateStatus(state)
+    if state then
+        StatusButton.Text = "🎯 AIMBOT : ON"
+        StatusButton.TextColor3 = Color3.fromRGB(80,255,80)
+    else
+        StatusButton.Text = "🎯 AIMBOT : OFF"
+        StatusButton.TextColor3 = Color3.fromRGB(255,80,80)
+    end
+end
+
 -- Settings
 local Enabled = false
 local MaxDistance = 100
@@ -556,32 +592,44 @@ end
 -- ================== SAFE RESPAWN ==================
 LocalPlayer.CharacterAdded:Connect(function()
     Stop()
+    Enabled = false
     UpdateStatus(false)
 end)
 
+StatusButton.MouseButton1Click:Connect(function()
+    Enabled = not Enabled
+    UpdateStatus(Enabled)
+
+    if Enabled then
+        Start()
+    else
+        Stop()
+    end
+end)
 -- ================== TOGGLE ==================
+
 AimbotTab:CreateToggle({
     Name = "Aimbot (Camera + Character)",
     CurrentValue = false,
     Callback = function(v)
         Enabled = v
-        if v then Start() else Stop() end
+        UpdateStatus(v)
+        if v then
+            Start()
+        else
+            Stop()
+        end
     end
 })
 
 -- ================== AUTO SWITCH ==================
+
 AimbotTab:CreateToggle({
     Name = "Auto Switch Target",
     CurrentValue = true,
-      Callback = function(v)
-    Enabled = v
-    UpdateStatus(v)
-    if v then
-        Start()
-    else
-        Stop()
+    Callback = function(v)
+        AutoSwitch = v
     end
-      end
 })
 
 -- ================== MANUAL SWITCH ==================
@@ -591,6 +639,44 @@ AimbotTab:CreateButton({
         LockedTarget = GetClosestTarget()
     end
 })
+
+local dragging = false
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    StatusButton.Position = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
+    )
+end
+
+StatusButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = StatusButton.Position
+    end
+end)
+
+StatusButton.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and
+       (input.UserInputType == Enum.UserInputType.MouseMovement
+       or input.UserInputType == Enum.UserInputType.Touch) then
+        update(input)
+    end
+end)
 
 AimbotTab:CreateButton({
    Name = "Hitbox expender",
