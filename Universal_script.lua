@@ -509,14 +509,25 @@ AimDot.Color = Color3.fromRGB(255,255,255)
 AimDot.Thickness = 1
 AimDot.Visible = false
 
-local function UpdateCenterDot()
-    local vp = Camera.ViewportSize
-    AimDot.Position = Vector2.new(vp.X / 2, vp.Y / 2)
-    AimDot.Visible = true
-end
+local function UpdateAimDot(target)
+    if not target or not target.Character then
+        AimDot.Visible = false
+        return
+    end
 
-local function HideDot()
-    AimDot.Visible = false
+    local head = target.Character:FindFirstChild("Head")
+    if not head then
+        AimDot.Visible = false
+        return
+    end
+
+    local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+    if onScreen then
+        AimDot.Position = Vector2.new(pos.X, pos.Y)
+        AimDot.Visible = true
+    else
+        AimDot.Visible = false
+    end
 end
 
 -- ================== AIM LOGIC ==================
@@ -545,7 +556,7 @@ local function StartAimbot()
 
         if not LockedTarget then return end
 
-        UpdateCenterDot()
+        UpdateAimDot(LockedTarget)
 
         local myChar = LocalPlayer.Character
         local targetChar = LockedTarget.Character
