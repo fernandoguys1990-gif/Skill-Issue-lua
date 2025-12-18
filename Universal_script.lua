@@ -509,6 +509,10 @@ AimDot.Color = Color3.fromRGB(255,255,255)
 AimDot.Thickness = 1
 AimDot.Visible = false
 
+local function HideDot()
+    AimDot.Visible = false
+end
+
 local function UpdateAimDot(target)
     if not target or not target.Character then
         AimDot.Visible = false
@@ -565,11 +569,18 @@ local function StartAimbot()
         local myRoot = myChar:FindFirstChild("HumanoidRootPart")
         local head = targetChar:FindFirstChild("Head")
          if myRoot and head then
-    -- hanya mengunci arah karakter, BUKAN kamera
-    myRoot.CFrame = CFrame.new(
-        myRoot.Position,
-        Vector3.new(head.Position.X, myRoot.Position.Y, head.Position.Z)
-    )
+    -- KUNCI KAMERA KE TARGET
+Camera.CameraType = Enum.CameraType.Scriptable
+Camera.CFrame = CFrame.new(
+    Camera.CFrame.Position,
+    head.Position
+)
+
+-- ROTASI KARAKTER MENGIKUTI TARGET
+myRoot.CFrame = CFrame.new(
+    myRoot.Position,
+    Vector3.new(head.Position.X, myRoot.Position.Y, head.Position.Z)
+            )
          end
     end)
 end
