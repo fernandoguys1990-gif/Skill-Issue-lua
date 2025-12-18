@@ -563,5 +563,5 @@ local Button = DodTap:CreateButton({
    Name = "Dod Script (clik Here)",
    Callback = function()
       loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/dod-rayfield-hub/main/DoD_FullHub.lua"))()
-   end
+   end,
 })
