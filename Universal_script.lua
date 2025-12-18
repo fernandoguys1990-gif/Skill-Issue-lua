@@ -449,6 +449,10 @@ local AutoSwitch = true
 local LockedTarget = nil
 local AimConnection
 
+-- simpan state kamera & mouse
+local OldCameraType
+local OldMouseBehavior
+
 -- ================== STATUS UPDATE ==================
 local function UpdateStatus(state)
     if state then
@@ -497,23 +501,23 @@ local function ValidTarget(plr)
     and (my.Position - hrp.Position).Magnitude <= MaxDistance
 end
 
--- ================== AIM DOT (FOLLOW HEAD) ==================
+-- ================== AIM DOT (CENTER SCREEN) ==================
 local AimDot = Drawing.new("Circle")
-
 AimDot.Radius = 4
 AimDot.Filled = true
 AimDot.Color = Color3.fromRGB(255,255,255)
 AimDot.Thickness = 1
 AimDot.Visible = false
 
--- update posisi dot mengikuti kepala target
-local function UpdateDotTarget(target)
-    if not target
-    or not target.Character
-    or not target.Character:FindFirstChild("Head") then
-        AimDot.Visible = false
-        return
-    end
+local function UpdateCenterDot()
+    local vp = Camera.ViewportSize
+    AimDot.Position = Vector2.new(vp.X / 2, vp.Y / 2)
+    AimDot.Visible = true
+end
+
+local function HideDot()
+    AimDot.Visible = false
+end
 
     local head = target.Character.Head
     local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
@@ -537,23 +541,50 @@ local function StartAimbot()
 
     LockedTarget = GetClosestTarget()
 
-   AimConnection = RunService.RenderStepped:Connect(function()
-    if not Enabled then
-        HideDot()
-        return
-    end
+    -- kunci kamera & mouse
+    OldCameraType = Camera.CameraType
+    OldMouseBehavior = UserInputService.MouseBehavior
 
-    UpdateDotTarget(LockedTarget)
+    Camera.CameraType = Enum.CameraType.Scriptable
+    UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
 
-    if not ValidTarget(LockedTarget) then
-        if AutoSwitch then
-            LockedTarget = GetClosestTarget()
-        else
+    AimConnection = RunService.RenderStepped:Connect(function()
+        if not Enabled then
+            HideDot()
             return
         end
-         end
+
+        if not ValidTarget(LockedTarget) then
+            if AutoSwitch then
+                LockedTarget = GetClosestTarget()
+            else
+                return
+            end
+        end
 
         if not LockedTarget then return end
+
+        UpdateCenterDot()
+
+        local myChar = LocalPlayer.Character
+        local targetChar = LockedTarget.Character
+        if not myChar or not targetChar then return end
+
+        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+        local head = targetChar:FindFirstChild("Head")
+
+        if myRoot and head then
+            -- camera benar-benar terkunci ke target
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
+
+            -- karakter menghadap target (tanpa miring)
+            myRoot.CFrame = CFrame.new(
+                myRoot.Position,
+                Vector3.new(head.Position.X, myRoot.Position.Y, head.Position.Z)
+            )
+        end
+    end)
+end
 
         local myChar = LocalPlayer.Character
         local targetChar = LockedTarget.Character
@@ -585,6 +616,15 @@ local function StopAimbot()
     Enabled = false
 
     HideDot()
+
+    -- balikin kamera & mouse
+    if OldCameraType then
+        Camera.CameraType = OldCameraType
+    else
+        Camera.CameraType = Enum.CameraType.Custom
+    end
+
+    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 end
 
 -- ================== CLICK STATUS GUI ==================
