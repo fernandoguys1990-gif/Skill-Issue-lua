@@ -497,22 +497,61 @@ local function ValidTarget(plr)
     and (my.Position - hrp.Position).Magnitude <= MaxDistance
 end
 
+-- ================== AIM DOT (FOLLOW HEAD) ==================
+local AimDot = Drawing.new("Circle")
+
+AimDot.Radius = 4
+AimDot.Filled = true
+AimDot.Color = Color3.fromRGB(255,255,255)
+AimDot.Thickness = 1
+AimDot.Visible = false
+
+-- update posisi dot mengikuti kepala target
+local function UpdateDotTarget(target)
+    if not target
+    or not target.Character
+    or not target.Character:FindFirstChild("Head") then
+        AimDot.Visible = false
+        return
+    end
+
+    local head = target.Character.Head
+    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+
+    if onScreen then
+        AimDot.Position = Vector2.new(screenPos.X, screenPos.Y)
+        AimDot.Visible = true
+    else
+        AimDot.Visible = false
+    end
+end
+
+-- hide dot
+local function HideDot()
+    AimDot.Visible = false
+end
+
 -- ================== AIM LOGIC ==================
 local function StartAimbot()
     if AimConnection then return end
 
     LockedTarget = GetClosestTarget()
 
-    AimConnection = RunService.RenderStepped:Connect(function()
-        if not Enabled then return end
+   AimConnection = RunService.RenderStepped:Connect(function()
+    if not Enabled then
+        HideDot()
+        return
+    end
 
-        if not ValidTarget(LockedTarget) then
-            if AutoSwitch then
-                LockedTarget = GetClosestTarget()
-            else
-                return
-            end
+    UpdateDotTarget(LockedTarget)
+
+    if not ValidTarget(LockedTarget) then
+        if AutoSwitch then
+            LockedTarget = GetClosestTarget()
+        else
+            return
         end
+         end
 
         if not LockedTarget then return end
 
@@ -541,7 +580,11 @@ local function StopAimbot()
         AimConnection:Disconnect()
         AimConnection = nil
     end
+
     LockedTarget = nil
+    Enabled = false
+
+    HideDot()
 end
 
 -- ================== CLICK STATUS GUI ==================
