@@ -414,9 +414,9 @@ end
 
 local AimbotTab = Window:CreateTab("🎯 Aimbot", 4483362458)
 
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
@@ -424,39 +424,7 @@ local LocalPlayer = Players.LocalPlayer
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AimbotStatusGui"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = game:GetService("CoreGui")
-
-local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Parent = ScreenGui
-StatusLabel.Size = UDim2.new(0, 180, 0, 40)
-StatusLabel.Position = UDim2.new(0, 10, 0.5, -20) -- tengah kiri layar
-StatusLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-StatusLabel.BackgroundTransparency = 0.2
-StatusLabel.BorderSizePixel = 0
-StatusLabel.TextScaled = true
-StatusLabel.Font = Enum.Font.GothamBold
-StatusLabel.Text = "🎯 AIMBOT : OFF"
-StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-StatusLabel.Visible = true
-
--- Rounded corner
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
-UICorner.Parent = StatusLabel
-
--- Update status function
-local function UpdateStatus(state)
-    if state then
-        StatusLabel.Text = "🎯 AIMBOT : ON"
-        StatusLabel.TextColor3 = Color3.fromRGB(80, 255, 80)
-    else
-        StatusLabel.Text = "🎯 AIMBOT : OFF"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-    end
-end
-
--- ================== DRAGGABLE STATUS GUI ==================
-local UserInputService = game:GetService("UserInputService")
+ScreenGui.Parent = game.CoreGui
 
 local StatusButton = Instance.new("TextButton")
 StatusButton.Parent = ScreenGui
@@ -467,14 +435,15 @@ StatusButton.BackgroundTransparency = 0.15
 StatusButton.BorderSizePixel = 0
 StatusButton.TextScaled = true
 StatusButton.Font = Enum.Font.GothamBold
-StatusButton.Text = "🎯 AIMBOT : OFF"
-StatusButton.TextColor3 = Color3.fromRGB(255,80,80)
 StatusButton.AutoButtonColor = false
 
-local UICorner = Instance.new("UICorner")
+local UICorner = Instance.new("UICorner", StatusButton)
 UICorner.CornerRadius = UDim.new(0, 12)
-UICorner.Parent = StatusButton
 
+-- ================== STATUS FUNCTION ==================
+local Enabled = false
+
+local function UpdateStatus(state)
     if state then
         StatusButton.Text = "🎯 AIMBOT : ON"
         StatusButton.TextColor3 = Color3.fromRGB(80,255,80)
@@ -484,173 +453,10 @@ UICorner.Parent = StatusButton
     end
 end
 
--- Settings
-local Enabled = false
-local MaxDistance = 100
-local LockedTarget = nil
-local AutoSwitch = true
-local conn
+UpdateStatus(false)
 
--- ================== DOT ==================
-local Dot = Drawing.new("Circle")
-Dot.Radius = 3
-Dot.Filled = true
-Dot.Color = Color3.fromRGB(255,255,255)
-Dot.Visible = false
-
--- ================== GET TARGET ==================
-local function GetClosestTarget()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-
-    local closest, dist = nil, MaxDistance
-
-    for _,plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer
-        and plr.Character
-        and plr.Character:FindFirstChild("HumanoidRootPart")
-        and plr.Character:FindFirstChild("Humanoid")
-        and plr.Character.Humanoid.Health > 0 then
-
-            local d = (char.HumanoidRootPart.Position -
-                       plr.Character.HumanoidRootPart.Position).Magnitude
-            if d < dist then
-                dist = d
-                closest = plr
-            end
-        end
-    end
-    return closest
-end
-
--- ================== VALID TARGET ==================
-local function ValidTarget(plr)
-    return plr
-    and plr.Character
-    and plr.Character:FindFirstChild("Humanoid")
-    and plr.Character.Humanoid.Health > 0
-    and (LocalPlayer.Character.HumanoidRootPart.Position -
-         plr.Character.HumanoidRootPart.Position).Magnitude <= MaxDistance
-end
-
--- ================== START ==================
-local function Start()
-    if conn then return end  -- Prevent multiple connections
-    Enabled = true
-    LockedTarget = GetClosestTarget()
-    Dot.Visible = true
-
-    conn = RunService.RenderStepped:Connect(function()
-        -- dot tengah
-        Dot.Position = Vector2.new(
-            Camera.ViewportSize.X / 2,
-            Camera.ViewportSize.Y / 2
-        )
-
-        if not Enabled then return end
-
-        -- auto ganti target
-        if not ValidTarget(LockedTarget) then
-            if AutoSwitch then
-                LockedTarget = GetClosestTarget()
-            else
-                return
-            end
-        end
-
-        if not LockedTarget then return end
-
-        local char = LocalPlayer.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        local head = LockedTarget.Character:FindFirstChild("Head")
-
-        if root and head then
-            -- 🎥 CAMERA AIM
-            Camera.CFrame = CFrame.new(
-                Camera.CFrame.Position,
-                head.Position
-            )
-
-            -- 🧍 CHARACTER AIM
-            root.CFrame = CFrame.new(
-                root.Position,
-                Vector3.new(head.Position.X, root.Position.Y, head.Position.Z)
-            )
-        end
-    end)
-end
-
--- ================== STOP ==================
-local function Stop()
-    if conn then conn:Disconnect() conn = nil end
-    LockedTarget = nil
-    Dot.Visible = false
-end
-
--- ================== SAFE RESPAWN ==================
-LocalPlayer.CharacterAdded:Connect(function()
-    Stop()
-    Enabled = false
-    UpdateStatus(false)
-end)
-
-StatusButton.MouseButton1Click:Connect(function()
-    Enabled = not Enabled
-    UpdateStatus(Enabled)
-
-    if Enabled then
-        Start()
-    else
-        Stop()
-    end
-end)
--- ================== TOGGLE ==================
-
-AimbotTab:CreateToggle({
-    Name = "Aimbot (Camera + Character)",
-    CurrentValue = false,
-    Callback = function(v)
-        Enabled = v
-        UpdateStatus(v)
-        if v then
-            Start()
-        else
-            Stop()
-        end
-    end
-})
-
--- ================== AUTO SWITCH ==================
-
-AimbotTab:CreateToggle({
-    Name = "Auto Switch Target",
-    CurrentValue = true,
-    Callback = function(v)
-        AutoSwitch = v
-    end
-})
-
--- ================== MANUAL SWITCH ==================
-AimbotTab:CreateButton({
-    Name = "Switch Target (Manual)",
-    Callback = function()
-        LockedTarget = GetClosestTarget()
-    end
-})
-
-local dragging = false
-local dragStart
-local startPos
-
-local function update(input)
-    local delta = input.Position - dragStart
-    StatusButton.Position = UDim2.new(
-        startPos.X.Scale,
-        startPos.X.Offset + delta.X,
-        startPos.Y.Scale,
-        startPos.Y.Offset + delta.Y
-    )
-end
+-- ================== DRAG ==================
+local dragging, dragStart, startPos
 
 StatusButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -669,12 +475,95 @@ StatusButton.InputEnded:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if dragging and
-       (input.UserInputType == Enum.UserInputType.MouseMovement
-       or input.UserInputType == Enum.UserInputType.Touch) then
-        update(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        StatusButton.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
     end
 end)
+
+-- ================== AIMBOT LOGIC (ringkas) ==================
+local conn
+local function Start()
+    if conn then return end
+    conn = RunService.RenderStepped:Connect(function()
+         local MaxDistance = 100
+local AutoSwitch = true
+local LockedTarget = nil
+local AimConnection
+
+local function StartAimbot()
+    if AimConnection then return end
+
+    LockedTarget = GetClosestTarget(MaxDistance)
+
+    AimConnection = RunService.RenderStepped:Connect(function()
+        if not Enabled then return end
+
+        -- ganti target kalau mati / jauh
+        if not IsValidTarget(LockedTarget, MaxDistance) then
+            if AutoSwitch then
+                LockedTarget = GetClosestTarget(MaxDistance)
+            else
+                return
+            end
+        end
+
+        if not LockedTarget then return end
+
+        local myChar = LocalPlayer.Character
+        local targetChar = LockedTarget.Character
+        if not myChar or not targetChar then return end
+
+        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+        local targetHead = targetChar:FindFirstChild("Head")
+
+        if myRoot and targetHead then
+            -- 🎥 CAMERA AIM
+            Camera.CFrame = CFrame.new(
+                Camera.CFrame.Position,
+                targetHead.Position
+            )
+
+            -- 🧍 CHARACTER AIM (tidak miring)
+            myRoot.CFrame = CFrame.new(
+                myRoot.Position,
+                Vector3.new(
+                    targetHead.Position.X,
+                    myRoot.Position.Y,
+                    targetHead.Position.Z
+                )
+            )
+        end
+    end)
+         end
+    end)
+end
+
+local function Stop()
+    if conn then conn:Disconnect() conn = nil end
+end
+
+StatusButton.MouseButton1Click:Connect(function()
+    Enabled = not Enabled
+    UpdateStatus(Enabled)
+    if Enabled then Start() else Stop() end
+end)
+
+AimbotTab:CreateToggle({
+    Name = "Aimbot",
+    CurrentValue = false,
+    Callback = function(v)
+        Enabled = v
+        UpdateStatus(v)
+        if v then Start() else Stop() end
+    end
+})
 
 AimbotTab:CreateButton({
    Name = "Hitbox expender",
