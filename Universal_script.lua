@@ -519,22 +519,6 @@ local function HideDot()
     AimDot.Visible = false
 end
 
-    local head = target.Character.Head
-    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-
-    if onScreen then
-        AimDot.Position = Vector2.new(screenPos.X, screenPos.Y)
-        AimDot.Visible = true
-    else
-        AimDot.Visible = false
-    end
-end
-
--- hide dot
-local function HideDot()
-    AimDot.Visible = false
-end
-
 -- ================== AIM LOGIC ==================
 local function StartAimbot()
     if AimConnection then return end
@@ -592,16 +576,9 @@ local function StopAimbot()
 
     LockedTarget = nil
     Enabled = false
-
     HideDot()
 
-    -- balikin kamera & mouse
-    if OldCameraType then
-        Camera.CameraType = OldCameraType
-    else
-        Camera.CameraType = Enum.CameraType.Custom
-    end
-
+    Camera.CameraType = OldCameraType or Enum.CameraType.Custom
     UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 end
 
