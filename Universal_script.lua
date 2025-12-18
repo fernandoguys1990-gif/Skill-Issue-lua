@@ -415,6 +415,41 @@ local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
+-- ================== STATUS GUI ==================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AimbotStatusGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Parent = ScreenGui
+StatusLabel.Size = UDim2.new(0, 180, 0, 40)
+StatusLabel.Position = UDim2.new(0, 10, 0.5, -20) -- tengah kiri layar
+StatusLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+StatusLabel.BackgroundTransparency = 0.2
+StatusLabel.BorderSizePixel = 0
+StatusLabel.TextScaled = true
+StatusLabel.Font = Enum.Font.GothamBold
+StatusLabel.Text = "🎯 AIMBOT : OFF"
+StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+StatusLabel.Visible = true
+
+-- Rounded corner
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = StatusLabel
+
+-- Update status function
+local function UpdateStatus(state)
+    if state then
+        StatusLabel.Text = "🎯 AIMBOT : ON"
+        StatusLabel.TextColor3 = Color3.fromRGB(80, 255, 80)
+    else
+        StatusLabel.Text = "🎯 AIMBOT : OFF"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+    end
+end
+
 -- Settings
 local Enabled = false
 local MaxDistance = 100
@@ -521,6 +556,7 @@ end
 -- ================== SAFE RESPAWN ==================
 LocalPlayer.CharacterAdded:Connect(function()
     Stop()
+    UpdateStatus(false)
 end)
 
 -- ================== TOGGLE ==================
@@ -537,9 +573,15 @@ AimbotTab:CreateToggle({
 AimbotTab:CreateToggle({
     Name = "Auto Switch Target",
     CurrentValue = true,
-    Callback = function(v)
-        AutoSwitch = v
+      Callback = function(v)
+    Enabled = v
+    UpdateStatus(v)
+    if v then
+        Start()
+    else
+        Stop()
     end
+      end
 })
 
 -- ================== MANUAL SWITCH ==================
