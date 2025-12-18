@@ -600,15 +600,26 @@ StatusButton.MouseButton1Click:Connect(function()
 end)
 
 -- ================== RAYFIELD TOGGLES ==================
+
 AimbotTab:CreateToggle({
     Name = "Aimbot (Camera + Character)",
     CurrentValue = false,
     Callback = function(v)
         Enabled = v
         UpdateStatus(v)
+
+        local hum = LocalPlayer.Character
+            and LocalPlayer.Character:FindFirstChild("Humanoid")
+
         if v then
+            if hum then
+                hum.AutoRotate = true
+            end
             StartAimbot()
         else
+            if hum then
+                hum.AutoRotate = true -- pastikan normal saat OFF
+            end
             StopAimbot()
         end
     end
