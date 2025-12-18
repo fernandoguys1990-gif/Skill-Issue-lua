@@ -562,6 +562,6 @@ local DodTap = Window:CreateTab("Die Of Death Script", nil)
 local Button = DodTap:CreateButton({
    Name = "Dod Script (clik Here)",
    Callback = function()
-      loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/dod-rayfield-hub/main/DoD_FullHub.lua"))()
+      loadstring(game:HttpGet("https://raw.githubusercontent.com/fernandoguys1990-gif/Skill-Issue-lua/refs/heads/main/Die_of_death.lua?token=GHSAT0AAAAAADRP46VQ6B2INE43SN2WRE2O2KDJB7A"))()
    end,
 })
