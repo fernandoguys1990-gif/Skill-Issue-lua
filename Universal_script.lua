@@ -541,7 +541,7 @@ local function StartAimbot()
 
     LockedTarget = GetClosestTarget()
 
-    -- kunci kamera & mouse
+    -- simpan state
     OldCameraType = Camera.CameraType
     OldMouseBehavior = UserInputService.MouseBehavior
 
@@ -574,30 +574,8 @@ local function StartAimbot()
         local head = targetChar:FindFirstChild("Head")
 
         if myRoot and head then
-            -- camera benar-benar terkunci ke target
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
 
-            -- karakter menghadap target (tanpa miring)
-            myRoot.CFrame = CFrame.new(
-                myRoot.Position,
-                Vector3.new(head.Position.X, myRoot.Position.Y, head.Position.Z)
-            )
-        end
-    end)
-end
-
-        local myChar = LocalPlayer.Character
-        local targetChar = LockedTarget.Character
-        if not myChar or not targetChar then return end
-
-        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
-        local head = targetChar:FindFirstChild("Head")
-
-        if myRoot and head then
-            -- Camera aim
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
-
-            -- Character aim (tidak miring)
             myRoot.CFrame = CFrame.new(
                 myRoot.Position,
                 Vector3.new(head.Position.X, myRoot.Position.Y, head.Position.Z)
