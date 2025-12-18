@@ -1,4 +1,3 @@
--- script by DeepSeekScripts
 
 -- Script for granting all abilities button in Die of Death + ESP + Invis GUI Creator
 local Players = game:GetService("Players")
