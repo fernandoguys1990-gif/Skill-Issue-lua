@@ -407,6 +407,11 @@ MainTab:CreateButton({
 })
 
 -- ================== AIMBOT TAB ==================
+
+if game.CoreGui:FindFirstChild("AimbotStatusGui") then
+    game.CoreGui.AimbotStatusGui:Destroy()
+end
+
 local AimbotTab = Window:CreateTab("🎯 Aimbot", 4483362458)
 
 -- Services
@@ -453,11 +458,6 @@ end
 -- ================== DRAGGABLE STATUS GUI ==================
 local UserInputService = game:GetService("UserInputService")
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AimbotStatusGui"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = game:GetService("CoreGui")
-
 local StatusButton = Instance.new("TextButton")
 StatusButton.Parent = ScreenGui
 StatusButton.Size = UDim2.new(0, 190, 0, 45)
@@ -475,8 +475,6 @@ local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 12)
 UICorner.Parent = StatusButton
 
--- ===== UPDATE TEXT =====
-local function UpdateStatus(state)
     if state then
         StatusButton.Text = "🎯 AIMBOT : ON"
         StatusButton.TextColor3 = Color3.fromRGB(80,255,80)
