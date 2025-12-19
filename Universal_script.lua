@@ -406,16 +406,19 @@ MainTab:CreateButton({
    end
 })
 
--- ================== AIMBOT (CLEAN & FIXED, NO LOGIC CHANGE) ==================
-
--- anti double gui
+-- anti dobel gui
 if game.CoreGui:FindFirstChild("AimbotStatusGui") then
-    game.CoreGui.AimbotStatusGui:Destroy()
+game.CoreGui.AimbotStatusGui:Destroy()
 end
 
 local AimbotTab = Window:CreateTab("🎯 Aimbot", 4483362458)
 
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
 
 -- ================== STATUS GUI ==================
 local ScreenGui = Instance.new("ScreenGui")
@@ -434,7 +437,8 @@ StatusButton.TextScaled = true
 StatusButton.Font = Enum.Font.GothamBold
 StatusButton.AutoButtonColor = false
 
-Instance.new("UICorner", StatusButton).CornerRadius = UDim.new(0,12)
+local UICorner = Instance.new("UICorner", StatusButton)
+UICorner.CornerRadius = UDim.new(0,12)
 
 -- ================== SETTINGS ==================
 local Enabled = false
@@ -443,162 +447,228 @@ local AutoSwitch = true
 local LockedTarget = nil
 local AimConnection
 
-local OldCameraType
-local OldMouseBehavior
-
--- ================== STATUS ==================
+-- ================== STATUS UPDATE ==================
 local function UpdateStatus(state)
-    StatusButton.Text = state and "🎯 AIMBOT : ON" or "🎯 AIMBOT : OFF"
-    StatusButton.TextColor3 = state and Color3.fromRGB(80,255,80) or Color3.fromRGB(255,80,80)
+if state then
+StatusButton.Text = "🎯 AIMBOT : ON"
+StatusButton.TextColor3 = Color3.fromRGB(80,255,80)
+else
+StatusButton.Text = "🎯 AIMBOT : OFF"
+StatusButton.TextColor3 = Color3.fromRGB(255,80,80)
+end
 end
 UpdateStatus(false)
 
--- ================== TARGET ==================
+-- ================== TARGET FUNCTIONS ==================
 local function GetClosestTarget()
-    local char = LocalPlayer.Character
-    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return nil end
+local char = LocalPlayer.Character
+if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
 
-    local closest, dist = nil, MaxDistance
+local root = char.HumanoidRootPart  
+local closest, dist = nil, MaxDistance  
 
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character then
-            local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-            local hum = plr.Character:FindFirstChild("Humanoid")
-            if hrp and hum and hum.Health > 0 then
-                local d = (myRoot.Position - hrp.Position).Magnitude
-                if d < dist then
-                    dist = d
-                    closest = plr
-                end
-            end
-        end
-    end
-    return closest
+for _, plr in pairs(Players:GetPlayers()) do  
+    if plr ~= LocalPlayer  
+    and plr.Character  
+    and plr.Character:FindFirstChild("HumanoidRootPart")  
+    and plr.Character:FindFirstChild("Humanoid")  
+    and plr.Character.Humanoid.Health > 0 then  
+
+        local d = (root.Position - plr.Character.HumanoidRootPart.Position).Magnitude  
+        if d < dist then  
+            dist = d  
+            closest = plr  
+        end  
+    end  
+end  
+return closest
+
 end
 
 local function ValidTarget(plr)
-    if not plr or not plr.Character then return false end
-    local hum = plr.Character:FindFirstChild("Humanoid")
-    local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-    local my = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    return hum and hrp and my and hum.Health > 0
-       and (my.Position - hrp.Position).Magnitude <= MaxDistance
+if not plr or not plr.Character then return false end
+local hum = plr.Character:FindFirstChild("Humanoid")
+local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+local my = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+return hum and hrp and my  
+and hum.Health > 0  
+and (my.Position - hrp.Position).Magnitude <= MaxDistance
+
 end
 
--- ================== AIM DOT ==================
+-- ================== AIM DOT (FOLLOW HEAD) ==================
 local AimDot = Drawing.new("Circle")
+
 AimDot.Radius = 4
 AimDot.Filled = true
 AimDot.Color = Color3.fromRGB(255,255,255)
+AimDot.Thickness = 1
 AimDot.Visible = false
 
+-- update posisi dot mengikuti kepala target
+local function UpdateDotTarget(target)
+if not target
+or not target.Character
+or not target.Character:FindFirstChild("Head") then
+AimDot.Visible = false
+return
+end
+
+local head = target.Character.Head  
+local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)  
+
+if onScreen then  
+    AimDot.Position = Vector2.new(screenPos.X, screenPos.Y)  
+    AimDot.Visible = true  
+else  
+    AimDot.Visible = false  
+end
+
+end
+
+-- hide dot
 local function HideDot()
-    AimDot.Visible = false
+AimDot.Visible = false
 end
 
-local function UpdateAimDot(target)
-    if not target or not target.Character then return HideDot() end
-    local head = target.Character:FindFirstChild("Head")
-    if not head then return HideDot() end
-
-    local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-    if onScreen then
-        AimDot.Position = Vector2.new(pos.X, pos.Y)
-        AimDot.Visible = true
-    else
-        AimDot.Visible = false
-    end
-end
-
--- ================== AIM CORE ==================
+-- ================== AIM LOGIC ==================
 local function StartAimbot()
-    if AimConnection then return end
+if AimConnection then return end
 
-    LockedTarget = GetClosestTarget()
-    OldCameraType = Camera.CameraType
-    OldMouseBehavior = UserInputService.MouseBehavior
+LockedTarget = GetClosestTarget()
 
-    AimConnection = RunService.RenderStepped:Connect(function()
-        if not Enabled then return HideDot() end
+AimConnection = RunService.RenderStepped:Connect(function()
+if not Enabled then
+HideDot()
+return
+end
 
-        if not ValidTarget(LockedTarget) then
-            if AutoSwitch then
-                LockedTarget = GetClosestTarget()
-            else
-                return
-            end
-        end
+UpdateDotTarget(LockedTarget)  
 
-        if not LockedTarget then return end
-        UpdateAimDot(LockedTarget)
+if not ValidTarget(LockedTarget) then  
+    if AutoSwitch then  
+        LockedTarget = GetClosestTarget()  
+    else  
+        return  
+    end  
+     end  
 
-        local myChar = LocalPlayer.Character
-        local targetChar = LockedTarget.Character
-        if not myChar or not targetChar then return end
+    if not LockedTarget then return end  
 
-        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
-        local head = targetChar:FindFirstChild("Head")
-        if myRoot and head then
-            local camPos = Camera.CFrame.Position
-            local lookDir = (head.Position - camPos).Unit
+    local myChar = LocalPlayer.Character  
+    local targetChar = LockedTarget.Character  
+    if not myChar or not targetChar then return end  
 
-            Camera.CFrame = CFrame.new(camPos, camPos + lookDir)
-            myRoot.CFrame = CFrame.new(
-                myRoot.Position,
-                Vector3.new(head.Position.X, myRoot.Position.Y, head.Position.Z)
-            )
-        end
-    end)
+    local myRoot = myChar:FindFirstChild("HumanoidRootPart")  
+    local head = targetChar:FindFirstChild("Head")  
+
+    if myRoot and head then  
+        -- Camera aim  
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)  
+
+        -- Character aim (tidak miring)  
+        myRoot.CFrame = CFrame.new(  
+            myRoot.Position,  
+            Vector3.new(head.Position.X, myRoot.Position.Y, head.Position.Z)  
+        )  
+    end  
+end)
+
 end
 
 local function StopAimbot()
-    if AimConnection then AimConnection:Disconnect() AimConnection = nil end
-    LockedTarget = nil
-    Enabled = false
-    HideDot()
-
-    Camera.CameraType = OldCameraType or Enum.CameraType.Custom
-    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+if AimConnection then
+AimConnection:Disconnect()
+AimConnection = nil
 end
 
--- ================== CONTROLS ==================
+LockedTarget = nil  
+Enabled = false  
+
+HideDot()
+
+end
+
+-- ================== CLICK STATUS GUI ==================
 StatusButton.MouseButton1Click:Connect(function()
-    Enabled = not Enabled
-    UpdateStatus(Enabled)
-    if Enabled then StartAimbot() else StopAimbot() end
+Enabled = not Enabled
+UpdateStatus(Enabled)
+if Enabled then
+StartAimbot()
+else
+StopAimbot()
+end
 end)
 
+-- ================== RAYFIELD TOGGLES ==================
 AimbotTab:CreateToggle({
-    Name = "Aimbot (Camera + Character)",
-    CurrentValue = false,
-    Callback = function(v)
-        Enabled = v
-        UpdateStatus(v)
-        if v then StartAimbot() else StopAimbot() end
-    end
+Name = "Aimbot (Camera + Character)",
+CurrentValue = false,
+Callback = function(v)
+Enabled = v
+UpdateStatus(v)
+if v then
+StartAimbot()
+else
+StopAimbot()
+end
+end
 })
 
 AimbotTab:CreateToggle({
-    Name = "Auto Switch Target",
-    CurrentValue = true,
-    Callback = function(v)
-        AutoSwitch = v
-    end
+Name = "Auto Switch Target",
+CurrentValue = true,
+Callback = function(v)
+AutoSwitch = v
+end
 })
 
 AimbotTab:CreateButton({
-    Name = "Switch Target (Manual)",
-    Callback = function()
-        LockedTarget = GetClosestTarget()
-    end
+Name = "Switch Target (Manual)",
+Callback = function()
+LockedTarget = GetClosestTarget()
+end
 })
 
-LocalPlayer.CharacterAdded:Connect(function()
-    StopAimbot()
-    UpdateStatus(false)
+-- ================== DRAG ==================
+local dragging, dragStart, startPos
+
+StatusButton.InputBegan:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1
+or input.UserInputType == Enum.UserInputType.Touch then
+dragging = true
+dragStart = input.Position
+startPos = StatusButton.Position
+end
 end)
 
+StatusButton.InputEnded:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1
+or input.UserInputType == Enum.UserInputType.Touch then
+dragging = false
+end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+or input.UserInputType == Enum.UserInputType.Touch) then
+local delta = input.Position - dragStart
+StatusButton.Position = UDim2.new(
+startPos.X.Scale,
+startPos.X.Offset + delta.X,
+startPos.Y.Scale,
+startPos.Y.Offset + delta.Y
+)
+end
+end)
+
+-- reset aman
+LocalPlayer.CharacterAdded:Connect(function()
+StopAimbot()
+Enabled = false
+UpdateStatus(false)
+end)
 
 AimbotTab:CreateButton({
    Name = "Hitbox expender",
