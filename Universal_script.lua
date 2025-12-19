@@ -569,16 +569,18 @@ local function StartAimbot()
         local myRoot = myChar:FindFirstChild("HumanoidRootPart")
         local head = targetChar:FindFirstChild("Head")
          if myRoot and head then
-    -- KUNCI KAMERA KE TARGET
-Camera.CameraType = Enum.CameraType.Scriptable
+            
+local camPos = Camera.CFrame.Position
+local lookDir = (head.Position - camPos).Unit
+
 Camera.CFrame = CFrame.new(
-    Camera.CFrame.Position,
-    head.Position
-)
+    camPos,
+    camPos + lookDir
+            )
 
 -- ROTASI KARAKTER MENGIKUTI TARGET
 myRoot.CFrame = CFrame.new(
-    myRoot.Position,
+    myRoot.Position, 
     Vector3.new(head.Position.X, myRoot.Position.Y, head.Position.Z)
             )
          end
@@ -689,7 +691,7 @@ LocalPlayer.CharacterAdded:Connect(function()
     Enabled = false
     UpdateStatus(false)
 end)
-
+,
 AimbotTab:CreateButton({
    Name = "Hitbox expender",
    Callback = function()
